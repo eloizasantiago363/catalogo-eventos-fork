@@ -24,17 +24,7 @@ const req = {
     }
 } as unknown as Request;
 
-class CriarEventoController {
-    async handle(req: Request, res: Response): Promise<Response> {
-        // Lógica do controlador (exemplo)
-        if (!req.body?.titulo) {
-            return res.status(400).json({ error: 'Dados inválidos para criação de evento' });
-        };
-
-        return res.status(201).json({ message: 'Evento criado com sucesso' });
-    }
-}
-
+import { CriarEventoController } from '../../src/controllers/criar-eventos-controller';
 describe('CriarEventoController', () => {
 
     // TESTA UM CENÁRIO EXEMPLO
@@ -65,7 +55,7 @@ describe('CriarEventoController', () => {
         expect(res.json).toHaveBeenCalledWith({ message: 'Evento criado com sucesso' });
     });
 
-    it('should fail to create event with invalid data', async () => {
+    it('should return 400 when create event with invalid data', async () => {
         const controller = new CriarEventoController();
         const req = {
             body: {
@@ -84,6 +74,43 @@ describe('CriarEventoController', () => {
         await controller.handle(req, res);
 
         expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith({ error: 'Dados inválidos para criação de evento' });
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+            errors: expect.arrayContaining([
+                expect.objectContaining({
+                    message: 'Título é obrigatório',
+                    path: 'titulo',
+                })
+            ]),
+            message: "Validation error",
+        }));
+    });
+
+    it('should fail to create event with invalid data', async () => {
+        const controller = new CriarEventoController();
+        const req = {
+            body: {
+                titulo: "", // Título inválido
+                cat: "", // Categoria inválida
+                data: "invalid-date",
+                hora: "",
+                local: "", // Local inválido
+                preco: "", // Preço inválido
+                img: "invalid-url", // Imagem inválida
+                desc: "" // Descrição inválida
+            }
+        } as unknown as Request; // Mock da requisição com dados inválidos
+        const res = mockResponse();
+
+        await controller.handle(req, res);
+
+        expect(res.status).toHaveBeenCalledWith(expect.any(Number));
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+            errors: expect.arrayOf(expect.objectContaining({
+                message: expect.any(String),
+                path: expect.any(String),
+            })),
+            message: "Validation error",
+        }));
+        expect(res.json.mock.calls[0][0].errors.length).toBe(8);
     });
 });
